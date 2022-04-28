@@ -123,9 +123,9 @@ cd moodle
 sudo git branch --track MOODLE_311_STABLE origin/MOODLE_311_STABLE
 sudo git checkout MOODLE_311_STABLE
 sudo cp -R /opt/moodle /var/www/html/
-sudo mkdir /var/moodledata
-sudo chown -R www-data /var/moodledata
-sudo chmod -R 777 /var/moodledata
+sudo mkdir /var/www/moodledata
+sudo chown -R www-data /var/www/moodledata
+sudo chmod -R 777 /var/www/moodledata
 sudo chmod -R 0755 /var/www/html/moodle
 
 Setup Database
@@ -136,7 +136,7 @@ GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,CREATE TEMPORARY TABLES,DROP,INDEX,ALTE
 sudo chmod -R 777 /var/www/html/moodle
 
 Proceed with browser Installation
-Data Directory: /var/moodledata
+Data Directory: /var/www/moodledata
 Database Type: MariaDB
 Host server: localhost
 Database: moodle
@@ -156,7 +156,7 @@ edit index.html > change edukastv path to .../moodle/index.php
 --------------------------------------------------------------------------------
 
 File System Repository
-sudo mkdir /var/moodledata/repository
+sudo mkdir /var/www/moodledata/repository
 Create the repository folders
 Go to Administration > Site administration > Plugins > Repositories > Manage Repositories;
 Select from the drop down next to File system "Enabled and visible"
@@ -219,7 +219,7 @@ a2enmod dav_fs
 a2enmod dav
 sudo systemctl restart apache2
 
-sudo chown www-data:www-data /var/moodledata/repository
+sudo chown www-data:www-data /var/www/moodledata/repository
 sudo mkdir -p /usr/local/apache/var/
 sudo chown www-data:www-data /usr/local/apache/var
 
@@ -229,7 +229,7 @@ Modify:
                 ServerAdmin webmaster@localhost
 
                 DocumentRoot /var/www/html
-                <Directory /var/moodledata/repository/>
+                <Directory /var/www/moodledata/repository/>
                         Options Indexes MultiViews
                         AllowOverride None
                         Order allow,deny
@@ -248,7 +248,7 @@ chmod 640 /usr/local/apache/var/passwd.dav
 
 sudo nano /etc/apache2/sites-available/default-ssl.conf
 Add:
-                Alias /webdav /var/moodledata/repository
+                Alias /webdav /var/www/moodledata/repository
 
                 <Location /webdav>
                         DAV On

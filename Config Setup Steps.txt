@@ -1,0 +1,274 @@
+Install Raspbian
+Create ssh file in boot drive to enable ssh
+Connect Rpi to router then ssh
+update upgrade autoremove autoclean reboot
+
+-------------------------------------------------------------------------------
+
+Routed Access Point
+                                         +- RPi -------+
+                                     +---+ 10.10.0.2   |          +- Laptop ----+
+                                     |   |     WLAN AP +-)))  (((-+ WLAN Client |
+                                     |   | 192.168.4.1 |          | 192.168.4.2 |
+                                     |   +-------------+          +-------------+
+                 +- Router ----+     |
+                 | Firewall    |     |   +- PC#2 ------+
+(Internet)---WAN-+ DHCP server +-LAN-+---+ 10.10.0.3   |
+                 |   10.10.0.1 |     |   +-------------+
+                 +-------------+     |
+                                     |   +- PC#1 ------+
+                                     +---+ 10.10.0.4   |
+                                         +-------------+
+
+Install hostapd
+sudo systemctl unmask hostapd
+sudo systemctl enable hostapd
+Install dsnmasq
+sudo DEBIAN_FRONTEND=noninteractive apt install -y netfilter-persistent iptables-persistent
+
+Set up the Network Router (wlan0 for builtin 802.11 wifi)
+sudo nano /etc/dhcpcd.conf
+	
+	interface wlan0
+    		static ip_address=192.168.4.1/24
+    		nohook wpa_supplicant
+
+Enable Routing and IP Masquerading (used in config, can be turned off in deployment)
+sudo nano /etc/sysctl.d/routed-ap.conf
+
+	# Enable IPv4 routing
+	net.ipv4.ip_forward=1
+
+sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+sudo netfilter-persistent save
+
+Configure the DHCP and DNS services for the wireless network
+sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
+sudo nano /etc/dnsmasq.conf
+
+	interface=wlan0 # Listening interface
+	dhcp-range=192.168.4.2,192.168.4.200,255.255.255.0,24h
+                	# Pool of IP addresses served via DHCP 192.168.4.2 -> 192.168.4.200
+	domain=wlan     # Local wireless DNS domain
+	address=/gw.wlan/192.168.4.1
+	address=/RuralCasting.wlan/192.168.4.1
+	address=/RuralCasting.local/192.168.4.1
+	address=/RuralCasting.asti/192.168.4.1
+	address=/RuralCasting.dost/192.168.4.1
+                	# Alias for this router
+
+Ensure Wireless Operation
+sudo rfkill unblock wlan
+
+Configure the AP Software (No Password needed)
+sudo nano /etc/hostapd/hostapd.conf
+
+country_code=PH
+interface=wlan0
+ssid=RuralCasting
+hw_mode=g
+channel=7
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+
+Running the new Wireless AP
+sudo systemctl reboot
+
+---------------------------------------------------------
+
+sudo apt install apache2
+sudo apt install ufw
+sudo nano /etc/ufw/applications.d/apache2-utils.ufw.profile 
+//Apache profile no longer in ufw app list so we need to create one
+
+[Apache]
+title=Web Server
+description=Apache v2 is the next generation of the omnipresent Apache web server.
+ports=80/tcp
+
+[Apache Secure]
+title=Web Server (HTTPS)
+description=Apache v2 is the next generation of the omnipresent Apache web server.
+ports=443/tcp
+
+[Apache Full]
+title=Web Server (HTTP,HTTPS)
+description=Apache v2 is the next generation of the omnipresent Apache web server.
+ports=80,443/tcp
+
+sudo ufw app list
+sudo ufw allow in "Apache Full"
+sudo ufw status
+
+sudo apt install mariadb-server
+sudo mysql_secure_installation
+Press enter to continue (no password by default)
+Then type “Y” to set a new password, and enter the password of your choice
+Now, press “Y” three times to:
+Remove anonymous users
+Disallow root login remotely
+Remove the test database
+And finally, press “Y” again to reload the privileges
+
+sudo apt install php libapache2-mod-php php-mysql
+sudo apt install graphviz aspell ghostscript clamav php7.4-pspell php7.4-curl php7.4-gd php7.4-intl php7.4-mysql php7.4-xml php7.4-xmlrpc php7.4-ldap php7.4-zip php7.4-soap php7.4-mbstring
+sudo apt install git
+-------------------------------------------------------------------------
+
+Install moodle
+cd /opt
+sudo git clone git://git.moodle.org/moodle.git
+cd moodle
+sudo git branch --track MOODLE_311_STABLE origin/MOODLE_311_STABLE
+sudo git checkout MOODLE_311_STABLE
+sudo cp -R /opt/moodle /var/www/html/
+sudo mkdir /var/moodledata
+sudo chown -R www-data /var/moodledata
+sudo chmod -R 777 /var/moodledata
+sudo chmod -R 0755 /var/www/html/moodle
+
+Setup Database
+CREATE DATABASE moodle DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+create user 'admin'@'localhost' IDENTIFIED BY '#RuralCasting2021';
+GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,CREATE TEMPORARY TABLES,DROP,INDEX,ALTER ON moodle.* TO 'admin'@'localhost';
+
+sudo chmod -R 777 /var/www/html/moodle
+
+Proceed with browser Installation
+Data Directory: /var/moodledata
+Database Type: MariaDB
+Host server: localhost
+Database: moodle
+User:admin
+Password: #RuralCasting2021
+Tables Prefix: mdl_
+
+admin account creation
+username: admin
+password: #RuralCasting2021
+
+sudo chmod -R 0755 /var/www/html/moodle
+
+--------------------------------------------------------------------------------
+Copy Splash Page files to /var/www/html
+edit index.html > change edukastv path to .../moodle/index.php
+--------------------------------------------------------------------------------
+
+File System Repository
+sudo mkdir /var/moodledata/repository
+Create the repository folders
+Go to Administration > Site administration > Plugins > Repositories > Manage Repositories;
+Select from the drop down next to File system "Enabled and visible"
+
+Administration > Site administration > Plugins > Media players > Manage media players
+enable HTML5 Video and HTML5 Audio
+
+Type "sudo nano /etc/php/7.4/apache2/php.ini"
+Press Ctrl and W and type "post_max_size"
+Change the value to 100M
+Press Ctrl and W and type "upload_max_filesize"
+Change the value to 100M
+Press Ctrl and W and type "max_execution_time"
+Change the value to 600
+Press Ctrl and O
+Press Ctrl and X
+sudo systemctl restart apache2
+
+Administration > Site administration > Security > Site security settings
+	Max Upload Size should be 100MB
+----------------------------------------------------------------------------------------------------------------------
+SSL Certificate
+sudo apt install openssl
+sudo mkdir -p /etc/ssl/mycerts
+sudo openssl req -new -x509 -days 365 -nodes -out /etc/ssl/mycerts/ruralcasting.pem -keyout /etc/ssl/mycerts/ruralcasting.key
+
+Country Name (2 letter code) [AU]:PH
+State or Province Name (full name) [Some-State]:Metro Manila
+Locality Name (eg, city) []:Quezon City
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:Department of Science and Technology
+Organizational Unit Name (eg, section) []:Advanced Science and Technology Institute
+Common Name (e.g. server FQDN or YOUR name) []:Edukastv
+Email Address []:ruralcasting@asti.dost.gov.ph
+
+sudo chmod 600 /etc/ssl/mycerts/ruralcasting*
+----------------------------------------------------------------------------------------------------------------------
+HTTPS
+sudo nano /etc/hosts
+add to the list:
+127.0.0.1	ruralcasting.local
+127.0.0.1	rcast.local
+
+sudo a2enmod ssl
+sudo nano /etc/apache2/sites-available/default-ssl.conf
+Modify:
+
+SSLEngine on
+
+SSLCertificateFile      /etc/ssl/mycerts/ruralcasting.pem
+SSLCertificateKeyFile /etc/ssl/mycerts/ruralcasting.key
+
+sudo a2ensite default-ssl
+sudo service apache2 reload
+
+//change /var/www/html/moodle/config.php > wwwroot to https://rcast.local/moodle (change http to https)
+------------------------------------------------------------------------------------------------------------------------
+WebDav
+
+a2enmod dav_fs
+a2enmod dav
+sudo systemctl restart apache2
+
+sudo chown www-data:www-data /var/moodledata/repository
+sudo mkdir -p /usr/local/apache/var/
+sudo chown www-data:www-data /usr/local/apache/var
+
+sudo nano /etc/apache2/sites-available/default-ssl.conf
+Modify:
+ <VirtualHost _default_:443>
+                ServerAdmin webmaster@localhost
+
+                DocumentRoot /var/www/html
+                <Directory /var/moodledata/repository/>
+                        Options Indexes MultiViews
+                        AllowOverride None
+                        Order allow,deny
+                        allow from all
+                </Directory>
+Reload apache
+
+WebDAV Authentication:
+sudo htpasswd -c /usr/local/apache/var/passwd.dav teacher
+ //Windows translates this to 192.168.0.100\teacher. 
+Therefore we create a second user account now
+sudo htpasswd /usr/local/apache/var/passwd.dav 10.42.0.1\\teacher
+
+chown root:www-data /usr/local/apache/var/passwd.dav
+chmod 640 /usr/local/apache/var/passwd.dav
+
+sudo nano /etc/apache2/sites-available/default-ssl.conf
+Add:
+                Alias /webdav /var/moodledata/repository
+
+                <Location /webdav>
+                        DAV On
+                        AuthType Basic
+                        AuthName "webdav"
+                        AuthUserFile /usr/local/apache/var/passwd.dav
+                        Require valid-user
+                </Location>
+
+
+Check for syntax and errors:
+sudo apachectl configtest 
+sudo a2enmod auth_digest
+sudo systemctl restart apache2
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+TODO: 
+NoDogSplash (Captive Portal)
+Create moodle classes and repositories
+
+

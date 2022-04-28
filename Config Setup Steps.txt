@@ -112,7 +112,7 @@ Remove the test database
 And finally, press “Y” again to reload the privileges
 
 sudo apt install php libapache2-mod-php php-mysql
-sudo apt install graphviz aspell ghostscript clamav php7.4-pspell php7.4-curl php7.4-gd php7.4-intl php7.4-mysql php7.4-xml php7.4-xmlrpc php7.4-ldap php7.4-zip php7.4-soap php7.4-mbstring
+sudo apt install graphviz aspell ghostscript clamav php8.1-pspell php8.1-curl php8.1-gd php8.1-intl php8.1-mysql php8.1-xml php8.1-xmlrpc php8.1-ldap php8.1-zip php8.1-soap php8.1-mbstring
 sudo apt install git
 -------------------------------------------------------------------------
 
